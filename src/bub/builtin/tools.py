@@ -206,7 +206,10 @@ async def tape_search(param: SearchInput, *, context: ToolContext) -> str:
         if "[tape.search]" in entry_str:
             continue
         lines.append(entry_str)
-    return f"[tape.search]: {len(entries)} matches" + "".join(f"\n{line}" for line in lines)
+    shown = len(lines)
+    filtered = len(entries) - shown
+    suffix = f" ({filtered} filtered)" if filtered else ""
+    return f"[tape.search]: {shown} matches{suffix}" + "".join(f"\n{line}" for line in lines)
 
 
 @tool(context=True, name="tape.reset")
