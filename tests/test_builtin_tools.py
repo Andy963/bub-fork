@@ -9,7 +9,7 @@ from republic import ToolContext
 from republic.core.errors import ErrorKind
 from republic.tools.executor import ToolExecutor
 
-from bub.builtin.tools import bash, bash_output, kill_bash
+from bub.builtin.tools import _resolve_path, bash, bash_output, kill_bash
 
 
 def _tool_context(tmp_path) -> ToolContext:
@@ -100,3 +100,27 @@ async def test_kill_bash_returns_status_when_process_already_finished(tmp_path) 
     result = await kill_bash.run(shell_id=shell_id)
 
     assert result == f"id: {shell_id}\nstatus: exited\nexit_code: 0"
+
+
+def test_resolve_path_rebase_absolute_path(tmp_path) -> None:
+    context = _tool_context(tmp_path)
+    # absolute paths should be stripped of root and treated as relative to workspace
+    resolved = _resolve_path(context, "/etc/passwd")
+    expected = (tmp_path / "etc" / "passwd").resolve()
+    assert resolved == expected
+
+
+def test_resolve_path_prevents_path_traversal(tmp_path) -> None:
+    context = _tool_context(tmp_path)
+    with pytest.raises(ValueError, match="resolves outside the workspace"):
+        _resolve_path(context, "../../etc/passwd")
+
+    with pytest.raises(ValueError, match="resolves outside the workspace"):
+        _resolve_path(context, "/../etc/passwd")
+
+
+def test_resolve_path_allows_valid_relative_path(tmp_path) -> None:
+    context = _tool_context(tmp_path)
+    resolved = _resolve_path(context, "some/file.txt")
+    expected = (tmp_path / "some" / "file.txt").resolve()
+    assert resolved == expected
