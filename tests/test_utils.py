@@ -1,9 +1,12 @@
 import asyncio
+from datetime import datetime
 from pathlib import Path
 
 import pytest
+import yaml
+from republic import TapeEntry
 
-from bub.utils import exclude_none, wait_until_stopped, workspace_from_state
+from bub.utils import exclude_none, get_entry_text, wait_until_stopped, workspace_from_state
 
 
 def test_exclude_none_keeps_non_none_values() -> None:
@@ -66,3 +69,16 @@ def test_workspace_from_state_falls_back_to_current_directory(monkeypatch: pytes
     workspace = workspace_from_state({"_runtime_workspace": "   "})
 
     assert workspace == tmp_path.resolve()
+
+
+def test_get_entry_text_serializes_with_yaml_safely() -> None:
+    dt = datetime(2025, 1, 1, 12, 0, 0)
+    payload = {"text": "hello", "time": dt, "unknown": [1, 2]}
+    entry = TapeEntry(id="test-1", kind="test_kind", payload=payload)
+
+    result = get_entry_text(entry)
+    parsed = yaml.safe_load(result)
+
+    assert parsed["text"] == "hello"
+    assert parsed["time"] == dt
+    assert parsed["unknown"] == [1, 2]

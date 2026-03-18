@@ -3,9 +3,15 @@ from collections.abc import Coroutine
 from pathlib import Path
 from typing import Any
 
+import yaml
 from republic import TapeEntry
 
 from bub.types import State
+
+try:
+    from yaml import CSafeDumper as _SafeDumper
+except ImportError:
+    from yaml import SafeDumper as _SafeDumper  # type: ignore[assignment]
 
 
 def exclude_none(d: dict[str, Any]) -> dict[str, Any]:
@@ -35,6 +41,4 @@ def workspace_from_state(state: State) -> Path:
 
 
 def get_entry_text(entry: TapeEntry) -> str:
-    import yaml
-
-    return yaml.safe_dump(entry.payload)
+    return yaml.dump(entry.payload, Dumper=_SafeDumper)
