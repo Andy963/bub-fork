@@ -301,12 +301,21 @@ def show_help() -> str:
 
 def _resolve_path(context: ToolContext, raw_path: str) -> Path:
     workspace = context.state.get("_runtime_workspace")
-    path = Path(raw_path).expanduser()
-    if path.is_absolute():
-        return path
     if workspace is None:
-        raise ValueError(f"relative path '{raw_path}' is not allowed without a workspace")
+        raise ValueError(f"path '{raw_path}' is not allowed without a workspace")
     if not isinstance(workspace, str | Path):
         raise TypeError("runtime workspace must be a filesystem path")
-    workspace_path = Path(workspace)
-    return (workspace_path / path).resolve()
+
+    workspace_path = Path(workspace).resolve()
+    path = Path(raw_path).expanduser()
+
+    if path.is_absolute():
+        # Strip root anchor to make it relative to the workspace
+        path = Path(str(path)[len(path.anchor):])
+
+    resolved_path = (workspace_path / path).resolve()
+
+    if not resolved_path.is_relative_to(workspace_path):
+        raise PermissionError(f"path '{raw_path}' escapes workspace")
+
+    return resolved_path
