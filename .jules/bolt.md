@@ -1,0 +1,3 @@
+## 2024-05-24 - [Faster text serialization for Tape matching]
+**Learning:** `yaml.safe_dump` was used to serialize tape `entry.payload` for substring/fuzzy matching in `FileTapeStore`. Since this is called iteratively for every tape entry, the serialization overhead was an unexpected performance bottleneck when working with large tapes.
+**Action:** Replace `yaml.safe_dump` with `json.dumps(entry.payload, ensure_ascii=False, default=_fallback)` where the fallback handler accommodates datetime objects that PyYAML previously handled implicitly. `json.dumps` operates an order of magnitude faster and provides a perfectly valid textual representation for keyword/fuzzy matchers.

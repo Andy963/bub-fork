@@ -35,6 +35,17 @@ def workspace_from_state(state: State) -> Path:
 
 
 def get_entry_text(entry: TapeEntry) -> str:
-    import yaml
+    import json
 
-    return yaml.safe_dump(entry.payload)
+    def _serialize_fallback(obj: Any) -> str:
+        try:
+            return obj.isoformat()
+        except AttributeError:
+            return str(obj)
+
+    # PERFORMANCE OPTIMIZATION: json.dumps is significantly faster than yaml.safe_dump.
+    # We use a default fallback to ensure types like datetime.datetime can be serialized,
+    # and ensure_ascii=False correctly handles unicode strings. The resulting JSON string
+    # contains all identical payload values to the YAML dump, making it suitable for fuzzy
+    # searches while substantially reducing serialization overhead.
+    return json.dumps(entry.payload, ensure_ascii=False, default=_serialize_fallback)
