@@ -100,3 +100,28 @@ async def test_kill_bash_returns_status_when_process_already_finished(tmp_path) 
     result = await kill_bash.run(shell_id=shell_id)
 
     assert result == f"id: {shell_id}\nstatus: exited\nexit_code: 0"
+
+
+def test_resolve_path_prevents_traversal(tmp_path) -> None:
+    from bub.builtin.tools import _resolve_path
+
+    context = _tool_context(tmp_path)
+    workspace = tmp_path.resolve()
+
+    # Relative paths that stay within the workspace are allowed
+    valid_path = _resolve_path(context, "test.txt")
+    assert valid_path == workspace / "test.txt"
+
+    valid_sub_path = _resolve_path(context, "sub/dir/test.txt")
+    assert valid_sub_path == workspace / "sub" / "dir" / "test.txt"
+
+    # Absolute paths are re-based to the workspace
+    rebased_path = _resolve_path(context, "/etc/passwd")
+    assert rebased_path == workspace / "etc" / "passwd"
+
+    # Path traversal attempts outside the workspace are blocked
+    with pytest.raises(ValueError, match="is outside the allowed workspace"):
+        _resolve_path(context, "../../../etc/passwd")
+
+    with pytest.raises(ValueError, match="is outside the allowed workspace"):
+        _resolve_path(context, "sub/dir/../../../../../etc/passwd")
