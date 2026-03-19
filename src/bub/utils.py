@@ -37,4 +37,9 @@ def workspace_from_state(state: State) -> Path:
 def get_entry_text(entry: TapeEntry) -> str:
     import yaml
 
-    return yaml.safe_dump(entry.payload)
+    try:
+        from yaml import CSafeDumper as SafeDumper
+    except ImportError:
+        from yaml import SafeDumper
+
+    return yaml.dump(entry.payload, Dumper=SafeDumper)

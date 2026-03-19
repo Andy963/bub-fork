@@ -1,0 +1,3 @@
+## 2026-03-19 - Fast YAML Serialization
+**Learning:** For performance-critical text serialization (e.g., tape entry searches in `src/bub/utils.py`), `yaml.dump(..., Dumper=yaml.CSafeDumper)` is strongly preferred over `yaml.safe_dump` as it executes significantly faster while strictly preserving correct YAML formatting.
+**Action:** Always prefer `yaml.CSafeDumper` for performance-sensitive serialization but maintain a fallback to `yaml.SafeDumper` if the C-extension is unavailable. Note that sets (`set()`) fail serialization with safe dumpers; use lists instead.
