@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rich.console import Console
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.text import Text
 
@@ -38,7 +39,7 @@ class CliRenderer:
     def assistant_output(self, text: str) -> None:
         if not text.strip():
             return
-        self.console.print(Panel(text, title="Assistant", border_style="blue"))
+        self.console.print(Panel(Markdown(text), title="Assistant", border_style="blue"))
 
     def error(self, text: str) -> None:
         if not text.strip():
