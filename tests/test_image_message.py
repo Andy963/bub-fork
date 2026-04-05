@@ -10,7 +10,7 @@ import pytest
 
 from bub.builtin.hook_impl import BuiltinImpl
 from bub.channels.message import ChannelMessage, MediaItem
-from bub.channels.telegram import TelegramChannel, _extract_media_items
+from bub.channels.telegram import TelegramChannel, TelegramMessageParser, _extract_media_items
 from bub.framework import BubFramework
 
 # ---------------------------------------------------------------------------
@@ -28,6 +28,13 @@ def test_media_item_keeps_fetcher_and_filename() -> None:
     assert item.mime_type == "image/jpeg"
     assert item.filename == "a.jpg"
     assert item.data_fetcher is fetch_bytes
+
+
+@pytest.mark.asyncio
+async def test_media_item_get_url_returns_none_when_fetcher_returns_none() -> None:
+    item = MediaItem(type="image", mime_type="image/jpeg", data_fetcher=_async_return(None))
+
+    assert await item.get_url() is None
 
 
 def test_channel_message_from_batch_merges_media() -> None:
@@ -312,6 +319,22 @@ async def test_build_prompt_with_non_image_media_only_includes_text(tmp_path: Pa
 
 
 @pytest.mark.asyncio
+async def test_build_prompt_with_unavailable_image_falls_back_to_text(tmp_path: Path) -> None:
+    _, impl = _build_impl(tmp_path)
+    message = ChannelMessage(
+        session_id="s",
+        channel="tg",
+        content="describe this",
+        media=[MediaItem(type="image", mime_type="image/jpeg", data_fetcher=_async_return(None))],
+    )
+
+    result = await impl.build_prompt(message, session_id="s", state={})
+
+    assert isinstance(result, str)
+    assert "describe this" in result
+
+
+@pytest.mark.asyncio
 async def test_build_prompt_command_ignores_media(tmp_path: Path) -> None:
     _, impl = _build_impl(tmp_path)
     message = ChannelMessage(
@@ -355,3 +378,27 @@ def test_extract_text_from_parts_no_text_parts() -> None:
 
     parts = [{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,X"}}]
     assert _extract_text_from_parts(parts) == ""
+
+
+@pytest.mark.asyncio
+async def test_telegram_message_parser_downloads_media_when_file_size_is_unknown() -> None:
+    parser = TelegramMessageParser(bot_getter=lambda: SimpleNamespace(get_file=_get_file(_download_bytes(b"img"))))
+
+    result = await parser._download_media("file-1", None)
+
+    assert result == b"img"
+
+
+def _download_bytes(data: bytes):
+    async def runner():
+        return bytearray(data)
+
+    return runner
+
+
+def _get_file(download):
+    async def runner(file_id: str):
+        assert file_id == "file-1"
+        return SimpleNamespace(download_as_bytearray=download)
+
+    return runner

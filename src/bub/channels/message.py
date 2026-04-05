@@ -18,7 +18,7 @@ class MediaItem:
     mime_type: str
     filename: str | None = None
     url: str | None = None
-    data_fetcher: Callable[[], Awaitable[bytes]] | None = None
+    data_fetcher: Callable[[], Awaitable[bytes | None]] | None = None
 
     async def get_url(self) -> str | None:
         """Get a URL for the media, fetching data if necessary."""
@@ -26,6 +26,8 @@ class MediaItem:
             return self.url
         if self.data_fetcher is not None:
             data = await self.data_fetcher()
+            if data is None:
+                return None
             return f"data:{self.mime_type};base64,{base64.b64encode(data).decode('utf-8')}"
         return None
 
